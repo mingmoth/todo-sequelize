@@ -11,6 +11,8 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      // 設定 Model 關聯
+      Todo.belongsTo(models.User)
     }
   };
   Todo.init({
