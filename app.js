@@ -17,10 +17,6 @@ app.use(express.static('public'))
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(methodOverride('_method'))
 
-app.get('/', (req, res) => {
-  res.send('hello world')
-})
-
 app.get('/users/login', (req, res) => {
   res.render('login')
 })
@@ -37,6 +33,23 @@ app.post('/users/register', (req, res) => {
   const { name, email, password, confirmPassword } = req.body
   User.create({ name, email, password })
     .then(user => res.redirect('/'))
+})
+
+app.get('/', (req, res) => {
+  // 在 Sequelize 的語法裡，查詢多筆資料是 findAll()
+  return Todo.findAll({
+    raw: true,
+    nest: true
+  })
+    .then((todos) => { return res.render('index', {todos: todos})})
+    .catch((error => { return res.status(422).json(error)}))
+})
+
+app.get('/todos/:id', (req, res) => {
+  const id = req.params.id
+  return Todo.findByPk(id)
+    .then(todo => res.render('detail', {todos: todo.toJSON()}))
+    .catch(error => console.log(error))
 })
 
 app.get('/users/logout', (req, res) => {
