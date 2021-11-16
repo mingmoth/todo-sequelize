@@ -2,11 +2,16 @@ const express = require('express')
 const exphbs = require('express-handlebars')
 const methodOverride = require('method-override')
 const bodyParser = require('body-parser')
+const session = require('express-session')
+const passport = require('passport')
 const bcrypt = require('bcryptjs')
 const db = require('./models')
 
 const app = express()
 const PORT = 3000
+
+const userPassport = require('./config/passport')
+userPassport(app)
 
 const Todo = db.Todo
 const User = db.User
@@ -17,13 +22,20 @@ app.use(express.static('public'))
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(methodOverride('_method'))
 
+app.use(session({
+  secret: 'ThisIsMySecret',
+  resave: false,
+  saveUninitialized: true
+}))
+
 app.get('/users/login', (req, res) => {
   res.render('login')
 })
 
-app.post('/users/login', (req, res) => {
-  res.send('login')
-})
+app.post('/users/login', passport.authenticate('local', {
+  successRedirect: '/',
+  failureRedirect: '/users/login'
+}))
 
 app.get('/users/register', (req, res) => {
   res.render('register')
@@ -31,8 +43,22 @@ app.get('/users/register', (req, res) => {
 
 app.post('/users/register', (req, res) => {
   const { name, email, password, confirmPassword } = req.body
-  User.create({ name, email, password })
-    .then(user => res.redirect('/'))
+  User.findOne({ where: {email} })
+    .then(user => {
+      if (user) {
+        console.log('Email already exists')
+        return res.render('register', { name, email, password, confirmPassword})
+      }
+      return bcrypt  .genSalt(10)
+      .then(salt => bcrypt.hash(password, salt))
+      .then(hash => User.create({
+        name,
+        email, 
+        password: hash
+      }))
+      .then(() => res.redirect('/'))
+      .catch(error => console.log(error))
+    })
 })
 
 app.get('/', (req, res) => {
